@@ -14,7 +14,11 @@ blacklist_patterns = { ".*", "*.ttf", };
 
 load_paths = {
 	{
-		.paths = {".", .relative = true, .recursive = true },
+		.paths = {
+			".",
+			.relative = true,
+			.recursive = true,
+		},
 		.os = "linux",
 	 },
 };

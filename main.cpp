@@ -1,6 +1,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
+#define MAX(a,b) \
+({ __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b; })
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -68,18 +72,6 @@ int main(int argc, char* args[]) {
         whiteSq = SDL_CreateRGBSurface(0, 1, 1, 32, rm, gm, bm, am);
         SDL_FillRect(blackSq, NULL, SDL_MapRGB(blackSq->format, 0, 0, 0));SDL_FillRect(whiteSq, NULL, SDL_MapRGB(whiteSq->format, 0xFF, 0xFF, 0xFF));
     }
-    SDL_Surface *numbers[11] = {0};
-    {
-        SDL_Color bg = {0xFF, 0xFF, 0xFF}, fg = {0, 0, 0};
-        for (int i = 0; i < 10; i++) {
-            char text[] = {(char) (i + 48), 0};
-            numbers[i] = TTF_RenderText_Shaded(font, text, fg, bg);
-            if (text == NULL) {
-                printf("TTF rendering failed! TTF_Error %s\n", TTF_GetError());
-                return -1;
-            }
-        }
-    }
     
     // Logic setup
     
@@ -87,6 +79,23 @@ int main(int argc, char* args[]) {
     const int start_height = 100;
     const int sqs_width = 10;
     const int sqs_height = 10;
+    const int max_dim = MAX(sqs_width, sqs_height);
+    SDL_Surface *numbers[max_dim + 1] = {0};
+    {
+        char text[(max_dim / 10) + 2];
+        {
+            SDL_Color bg = {0xFF, 0xFF, 0xFF}, fg = {0, 0, 0};
+            for (int i = 0; i < max_dim; i++) {
+                sprintf(text, "%d", i);
+                numbers[i] = TTF_RenderText_Shaded(font, text, fg, bg);
+                if (text == NULL) {
+                    printf("TTF rendering failed! TTF_Error %s\n", TTF_GetError());
+                    return -1;
+                }
+            }
+        }
+    }
+    
     int game[sqs_width][sqs_height] = {0};
     int answer[sqs_width][sqs_height] = {1, 1, 1};
     int top_hints[sqs_width][5] = {0};
@@ -160,6 +169,26 @@ int main(int argc, char* args[]) {
         
         SDL_BlitScaled(whiteSq, NULL, windowSurface, NULL);
         SDL_Rect dest;
+        
+        // Grid
+        {
+            dest.w = SQ_SIDE * sqs_width + 1;
+            dest.h = 1;
+            dest.x = start_width - 1;
+            for (int y = 0; y <= sqs_height; y++) {
+                dest.y = y * SQ_SIDE + start_width - 1;
+                SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
+            }
+            dest.w = 1;
+            dest.h = SQ_SIDE * sqs_height + 1;
+            dest.y = start_height - 1;
+            for (int x = 0; x <= sqs_height; x++) {
+                dest.x = x * SQ_SIDE + start_height - 1;
+                SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
+            }
+        }
+        
+        // Marked squares
         dest.w = SQ_SIDE;
         dest.h = SQ_SIDE;
         for (int x = 0; x < sqs_width; x++) {
@@ -167,10 +196,13 @@ int main(int argc, char* args[]) {
                 dest.x = x * SQ_SIDE + start_width;
                 dest.y = y * SQ_SIDE + start_height;
                 if (game[x][y] != 0) {
-                    SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);;
+                    SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
                 }
             }
         }
+        dest.x = start_width;
+        dest.y = start_height - SQ_SIDE;
+        SDL_BlitSurface(numbers[3], NULL, windowSurface, &dest);
         
         SDL_UpdateWindowSurface(window);
     }
