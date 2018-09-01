@@ -1,4 +1,4 @@
-OBJS = main.cpp
+OBJS = perlin.cpp perlin.h main.cpp
 OBJ_NAME = main
 
 all : $(OBJS)

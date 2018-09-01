@@ -1,6 +1,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
+#include "perlin.h"
+#include <time.h>
+#include <math.h>
 #define MAX(a,b) \
 ({ __typeof__ (a) _a = (a); \
     __typeof__ (b) _b = (b); \
@@ -8,10 +11,20 @@
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
-const int SQ_SIDE = 20;
+const int SQ_SIDE = 30;
+const int MAX_HEIGHT = 100, MAX_WIDTH = 100;
+float Gradient[MAX_WIDTH][MAX_HEIGHT][2];
+
+// Linear congruential generator in range -1 to 1
+float lcg() {
+    time_t trash;
+    static unsigned int state = time(&trash);
+    state = 1103515245 * state + 2531011;
+    return ((float) state) / 0xFFFFFFFF *2 - 1;
+}
 
 int main(int argc, char* args[]) {
-    
+
     // Setup
     
     {
@@ -75,17 +88,17 @@ int main(int argc, char* args[]) {
     
     // Logic setup
     
-    const int start_width = 100;
-    const int start_height = 100;
+    const int start_width = 150;
+    const int start_height = 150;
     const int sqs_width = 10;
     const int sqs_height = 10;
     const int max_dim = MAX(sqs_width, sqs_height);
     SDL_Surface *numbers[max_dim + 1] = {0};
     {
-        char text[(max_dim / 10) + 2];
+        char text[(int) log10(max_dim) + 2];
         {
             SDL_Color bg = {0xFF, 0xFF, 0xFF}, fg = {0, 0, 0};
-            for (int i = 0; i < max_dim; i++) {
+            for (int i = 0; i <= max_dim; i++) {
                 sprintf(text, "%d", i);
                 numbers[i] = TTF_RenderText_Shaded(font, text, fg, bg);
                 if (text == NULL) {
@@ -100,6 +113,28 @@ int main(int argc, char* args[]) {
     int answer[sqs_width][sqs_height] = {1, 1, 1, 0, 1, 0, 0, 0, 0, 0,
                                          1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                          0, 1};
+
+    for (int y = 0; y < MAX_HEIGHT; y++) {
+        for (int x = 0; x < MAX_WIDTH; x++) {
+            for (int i = 0; i < 2; i++) {
+                Gradient[x][y][i] = lcg();
+            }
+        }
+    }
+
+    for (int y = 0; y < sqs_height; y++) {
+        for (int x = 0; x < sqs_width; x++) {
+            float result = perlin(x * .3, y * .3);
+            answer[y][x] = result < 0 ? 1 : 0;
+        }
+    }
+    for (int y = 0; y < sqs_height; y++) {
+        for (int x = 0; x < sqs_width; x++) {
+            printf("%d", answer[x][y]);
+        }
+        printf("\n");
+    }
+
     const int top_hints_max = (sqs_height + .5) / 2;
     const int left_hints_max = (sqs_width + .5) / 2;
     int top_hints[sqs_width][top_hints_max] = {0};
@@ -202,15 +237,17 @@ int main(int argc, char* args[]) {
             for (int x = 0; x < sqs_width; x++) {
                 dest.x += SQ_SIDE;
                 dest.y = start_height;
-                for (int y = 0; y < top_hints_max; y++) {
+                if (top_hints[x][0] == 0) {
                     dest.y -= SQ_SIDE;
-                    if (top_hints[x][y] == 0) {
-                        if (y == 0) {
-                            SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                    SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                } else {
+                    for (int y = top_hints_max - 1; y >= 0 ; y--) {
+                        if (top_hints[x][y] == 0) {
+                            continue;
                         }
-                        break;
+                        dest.y -= SQ_SIDE;
+                        SDL_BlitSurface(numbers[top_hints[x][y]], NULL, windowSurface, &dest);
                     }
-                    SDL_BlitSurface(numbers[top_hints[x][y]], NULL, windowSurface, &dest);
                 }
             }
 
@@ -221,15 +258,17 @@ int main(int argc, char* args[]) {
             for (int x = 0; x < sqs_width; x++) {
                 dest.x = start_width;
                 dest.y += SQ_SIDE;
-                for (int y = 0; y < left_hints_max; y++) {
+                if (left_hints[x][0] == 0) {
                     dest.x -= SQ_SIDE;
-                    if (left_hints[x][y] == 0) {
-                        if (y == 0) {
-                            SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                    SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                } else {
+                    for (int y = left_hints_max - 1; y >= 0; y--) {
+                        if (left_hints[x][y] == 0) {
+                            continue;
                         }
-                        break;
+                        dest.x -= SQ_SIDE;
+                        SDL_BlitSurface(numbers[left_hints[x][y]], NULL, windowSurface, &dest);
                     }
-                    SDL_BlitSurface(numbers[left_hints[x][y]], NULL, windowSurface, &dest);
                 }
             }
 
