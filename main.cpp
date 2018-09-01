@@ -97,7 +97,9 @@ int main(int argc, char* args[]) {
     }
     
     int game[sqs_width][sqs_height] = {0};
-    int answer[sqs_width][sqs_height] = {1, 1, 1, 0, 1};
+    int answer[sqs_width][sqs_height] = {1, 1, 1, 0, 1, 0, 0, 0, 0, 0,
+                                         1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0, 1};
     const int top_hints_max = (sqs_height + .5) / 2;
     const int left_hints_max = (sqs_width + .5) / 2;
     int top_hints[sqs_width][top_hints_max] = {0};
@@ -106,19 +108,14 @@ int main(int argc, char* args[]) {
         int counter = 0;
         for (int x = 0; x < sqs_width; x++) {
             counter = 0;
-            // puts("1");
             for (int y = 0; y < sqs_height; y++) {
-                // puts("2");
                 if (answer[x][y] == 0) {
                     if (top_hints[x][counter] == 0) {
-                        // puts("3");
                         continue;
                     } else {
-                        // puts("4");
                         counter++;
                     }
                 } else {
-                    // puts("5");
                     top_hints[x][counter]++;
                 }
             }
@@ -138,9 +135,7 @@ int main(int argc, char* args[]) {
             }
         }
     }
-    printf("%d%d%d\n", top_hints[0][0], top_hints[0][1], top_hints[0][2]);
-    printf("%d%d %d%d %d%d\n", left_hints[0][0], left_hints[0][1], left_hints[1][0], left_hints[1][1], left_hints[2][0], left_hints[2][1]);
-    
+
     // Game loop
     
     bool quit = false;
@@ -170,70 +165,93 @@ int main(int argc, char* args[]) {
             }
         }
         
+        // Logic
+
+        if (memcmp(answer, game, sqs_height * sqs_width * sizeof(int)) == 0) {
+            puts("WINRAR!");
+        }
+
         // Rendering
-        
-        SDL_BlitScaled(whiteSq, NULL, windowSurface, NULL);
-        SDL_Rect dest;
-        
-        // Grid
+
         {
-            dest.w = SQ_SIDE * sqs_width + 1;
-            dest.h = 1;
-            dest.x = start_width - 1;
-            for (int y = 0; y <= sqs_height; y++) {
-                dest.y = y * SQ_SIDE + start_width - 1;
-                SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
-            }
-            dest.w = 1;
-            dest.h = SQ_SIDE * sqs_height + 1;
-            dest.y = start_height - 1;
-            for (int x = 0; x <= sqs_height; x++) {
-                dest.x = x * SQ_SIDE + start_height - 1;
-                SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
-            }
-        }
-        
-        // Numbers
-
-        dest.x = start_width - SQ_SIDE;
-
-        // puts("0");
-        for (int x = 0; x < sqs_width; x++) {
-            dest.x += SQ_SIDE;
-            dest.y = start_height;
-            for (int y = 0; y < top_hints_max; y++) {
-                dest.y -= SQ_SIDE;
-                // printf("1 %d\n", top_hints[x][y]);
-                if (top_hints[x][y] == 0) {
-                    // puts("2");
-                    if (y == 0) {
-                        // printf("3 %d\n", top_hints[x][y]);
-                        SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
-                    }
-                    break;
+            SDL_BlitScaled(whiteSq, NULL, windowSurface, NULL);
+            SDL_Rect dest;
+            
+            // Grid
+            {
+                dest.w = SQ_SIDE * sqs_width + 1;
+                dest.h = 1;
+                dest.x = start_width - 1;
+                for (int y = 0; y <= sqs_height; y++) {
+                    dest.y = y * SQ_SIDE + start_width - 1;
+                    SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
                 }
-                // printf("4 %d\n", top_hints[x][y]);
-                SDL_BlitSurface(numbers[top_hints[x][y]], NULL, windowSurface, &dest);
-            }
-        }
-
-        // Marked squares
-        dest.w = SQ_SIDE;
-        dest.h = SQ_SIDE;
-        for (int x = 0; x < sqs_width; x++) {
-            for (int y = 0; y < sqs_height; y++) {
-                dest.x = x * SQ_SIDE + start_width;
-                dest.y = y * SQ_SIDE + start_height;
-                if (game[x][y] != 0) {
+                dest.w = 1;
+                dest.h = SQ_SIDE * sqs_height + 1;
+                dest.y = start_height - 1;
+                for (int x = 0; x <= sqs_height; x++) {
+                    dest.x = x * SQ_SIDE + start_height - 1;
                     SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
                 }
             }
+            
+            // Top hints
+
+            dest.x = start_width - SQ_SIDE;
+
+            for (int x = 0; x < sqs_width; x++) {
+                dest.x += SQ_SIDE;
+                dest.y = start_height;
+                for (int y = 0; y < top_hints_max; y++) {
+                    dest.y -= SQ_SIDE;
+                    if (top_hints[x][y] == 0) {
+                        if (y == 0) {
+                            SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                        }
+                        break;
+                    }
+                    SDL_BlitSurface(numbers[top_hints[x][y]], NULL, windowSurface, &dest);
+                }
+            }
+
+            // Left hints
+
+            dest.y = start_height - SQ_SIDE;
+
+            for (int x = 0; x < sqs_width; x++) {
+                dest.x = start_width;
+                dest.y += SQ_SIDE;
+                for (int y = 0; y < left_hints_max; y++) {
+                    dest.x -= SQ_SIDE;
+                    if (left_hints[x][y] == 0) {
+                        if (y == 0) {
+                            SDL_BlitSurface(numbers[0], NULL, windowSurface, &dest);
+                        }
+                        break;
+                    }
+                    SDL_BlitSurface(numbers[left_hints[x][y]], NULL, windowSurface, &dest);
+                }
+            }
+
+            // Marked squares
+
+            dest.w = SQ_SIDE;
+            dest.h = SQ_SIDE;
+            for (int x = 0; x < sqs_width; x++) {
+                for (int y = 0; y < sqs_height; y++) {
+                    dest.x = x * SQ_SIDE + start_width;
+                    dest.y = y * SQ_SIDE + start_height;
+                    if (game[x][y] != 0) {
+                        SDL_BlitScaled(blackSq, NULL, windowSurface, &dest);
+                    }
+                }
+            }
+            // dest.x = start_width;
+            // dest.y = start_height - SQ_SIDE;
+            // SDL_BlitSurface(numbers[1], NULL, windowSurface, &dest);
+            
+            SDL_UpdateWindowSurface(window);
         }
-        // dest.x = start_width;
-        // dest.y = start_height - SQ_SIDE;
-        // SDL_BlitSurface(numbers[1], NULL, windowSurface, &dest);
-        
-        SDL_UpdateWindowSurface(window);
     }
     
     TTF_CloseFont(font);
